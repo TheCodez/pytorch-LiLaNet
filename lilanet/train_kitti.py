@@ -19,15 +19,15 @@ from lilanet.model import lilanet
 
 def get_data_loaders(data_dir, batch_size, num_workers):
     normalize = Normalize(mean=[0.21, 12.12], std=[0.16, 12.32])
-    joint_transform = Compose([
+    transforms = Compose([
         RandomHorizontalFlip(),
         normalize
     ])
 
-    train_loader = DataLoader(KITTI(root=data_dir, split='train', joint_transform=joint_transform),
+    train_loader = DataLoader(KITTI(root=data_dir, split='train', transform=transforms),
                               batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
-    val_loader = DataLoader(KITTI(root=data_dir, split='val', joint_transform=normalize),
+    val_loader = DataLoader(KITTI(root=data_dir, split='val', transform=normalize),
                             batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return train_loader, val_loader
