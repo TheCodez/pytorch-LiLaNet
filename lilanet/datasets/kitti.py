@@ -42,7 +42,7 @@ class KITTI(data.Dataset):
 
         distance = record[3, :, :]
         reflectivity = record[4, :, :]
-        label = record[5, :, :]
+        label = record[5, :, :].long()
 
         if self.transform:
             distance, reflectivity, label = self.transform(distance, reflectivity, label)
@@ -56,19 +56,29 @@ class KITTI(data.Dataset):
     def num_classes():
         return len(KITTI.classes)
 
+    @staticmethod
+    def mean():
+        return [0.21, 12.12]
+
+    @staticmethod
+    def std():
+        return [0.16, 12.32]
+
+    @staticmethod
+    def class_weights():
+        return torch.tensor([1 / 15.0, 1.0, 10.0, 10.0])
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     joint_transforms = Compose([
         RandomHorizontalFlip(),
-        Normalize(mean=[0.21, 12.12], std=[0.16, 12.32])
+        Normalize(mean=KITTI.mean(), std=KITTI.std())
     ])
-
 
     def _normalize(x):
         return (x - x.min()) / (x.max() - x.min())
-
 
     dataset = KITTI('../../data/kitti', transform=joint_transforms)
     distance, reflectivity, label = random.choice(dataset)
