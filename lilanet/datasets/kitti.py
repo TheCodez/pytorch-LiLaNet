@@ -11,6 +11,15 @@ from lilanet.datasets.transforms import Compose, RandomHorizontalFlip, Normalize
 
 
 class KITTI(data.Dataset):
+    """`KITTI LiDAR`_ Dataset.
+
+    Args:
+        root (string): Root directory of the ``lidar_2d`` and ``ImageSet`` folder.
+        split (string, optional): Select the split to use, ``train``, ``val`` or ``all``
+        transform (callable, optional): A function/transform that  takes in distance, reflectivity
+            and target tensors and returns a transformed version.
+    """
+
     Class = namedtuple('Class', ['name', 'id', 'color'])
 
     classes = [
@@ -77,8 +86,10 @@ if __name__ == '__main__':
         Normalize(mean=KITTI.mean(), std=KITTI.std())
     ])
 
+
     def _normalize(x):
         return (x - x.min()) / (x.max() - x.min())
+
 
     dataset = KITTI('../../data/kitti', transform=joint_transforms)
     distance, reflectivity, label = random.choice(dataset)

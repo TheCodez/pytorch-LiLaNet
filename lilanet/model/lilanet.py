@@ -4,7 +4,13 @@ import torch.nn.functional as F
 from torch.utils import model_zoo
 
 
-def lilanet(num_classes=13, pretrained=False):
+def lilanet(pretrained=False, num_classes=13):
+    """Constructs a LiLaNet model.
+
+    Args:
+        pretrained (bool): If True, returns a pre-trained model
+        num_classes (int): number of output classes
+    """
     model = LiLaNet(num_classes)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(''))
@@ -13,8 +19,12 @@ def lilanet(num_classes=13, pretrained=False):
 
 class LiLaNet(nn.Module):
     """
-        Implementation of "Boosting LiDAR-based Semantic Labeling by Cross-Modal Training Data Generation"
-            <https://arxiv.org/pdf/1804.09915.pdf>
+    Implements LiLaNet model from
+    `"Boosting LiDAR-based Semantic Labeling by Cross-Modal Training Data Generation"
+    <https://arxiv.org/abs/1804.09915>`_.
+
+    Arguments:
+        num_classes (int): number of output classes
     """
 
     def __init__(self, num_classes=13):

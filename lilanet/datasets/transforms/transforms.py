@@ -4,6 +4,11 @@ import torch
 
 
 class Compose(object):
+    """Composes several transforms together.
+
+    Args:
+        transforms (list of ``Transform`` objects): list of transforms to compose.
+    """
     def __init__(self, transforms):
         self.transforms = transforms
 
@@ -14,6 +19,13 @@ class Compose(object):
 
 
 class Normalize(object):
+    """Normalize a tensor with mean and standard deviation.
+
+    Args:
+        mean (sequence): Sequence of means [distance_mean, reflectivity_mean].
+        std (sequence): Sequence of standard deviations [distance_std, reflectivity_std].
+    """
+
     def __init__(self, mean, std):
         self.mean = mean
         self.std = std
@@ -32,6 +44,11 @@ class Normalize(object):
 
 
 class RandomHorizontalFlip(object):
+    """Horizontally flip the given tensors randomly with a given probability.
+
+    Args:
+        p (float): probability of the tensors being flipped. Default value is 0.5
+    """
     def __init__(self, p=0.5):
         self.p = p
 
