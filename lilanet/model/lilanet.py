@@ -25,11 +25,13 @@ class LiLaNet(nn.Module):
         self.lila3 = LiLaBlock(128, 256)
         self.lila4 = LiLaBlock(256, 256)
         self.lila5 = LiLaBlock(256, 128)
-        self.classifier = BasicConv2d(128, num_classes, kernel_size=1)
+        self.classifier = nn.Conv2d(128, num_classes, kernel_size=1)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
