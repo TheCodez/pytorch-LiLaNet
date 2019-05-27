@@ -14,11 +14,11 @@ from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 
 from lilanet.datasets import KITTI, Normalize, Compose, RandomHorizontalFlip
-from lilanet.model import lilanet
+from lilanet.model import LiLaNet
 
 
 def get_data_loaders(data_dir, batch_size, num_workers):
-    normalize = Normalize(mean=[0.21, 12.12], std=[0.16, 12.32])
+    normalize = Normalize(mean=KITTI.mean(), std=KITTI.std())
     transforms = Compose([
         RandomHorizontalFlip(),
         normalize
@@ -42,7 +42,7 @@ def run(args):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     num_classes = KITTI.num_classes()
-    model = lilanet(num_classes)
+    model = LiLaNet(num_classes)
 
     if torch.cuda.device_count() > 1:
         print("Using %d GPU(s)" % torch.cuda.device_count())
@@ -50,7 +50,7 @@ def run(args):
 
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=0)
+    criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights())
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     if args.resume:
