@@ -121,31 +121,25 @@ def run(args):
     mIoU(cm2, ignore_index=0).attach(evaluator, 'mIoU')
     Loss(criterion).attach(evaluator, 'loss')
 
+    def global_step_transform(engine, event_name):
+        return trainer.state.iteration
+
     tb_logger = TensorboardLogger(args.log_dir)
     tb_logger.attach(trainer,
-                     log_handler=OutputHandler(tag='training', output_transform=lambda x: {
-                         'loss': x
-                     }),
+                     log_handler=OutputHandler(tag='training',
+                                               metric_names=['loss']),
                      event_name=Events.ITERATION_COMPLETED)
 
     tb_logger.attach(train_evaluator,
                      log_handler=OutputHandler(tag='training_eval',
-                                               metric_names=['loss'],
-                                               output_transform=lambda x: {
-                                                   'loss': x['loss'],
-                                                   'mIoU': x['mIoU']
-                                               },
-                                               another_engine=trainer),
+                                               metric_names=['loss', 'mIoU'],
+                                               global_step_transform=global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation_eval',
-                                               metric_names=['loss'],
-                                               output_transform=lambda x: {
-                                                   'loss': x['loss'],
-                                                   'mIoU': x['mIoU']
-                                               },
-                                               another_engine=trainer),
+                                               metric_names=['loss', 'mIoU'],
+                                               global_step_transform=global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
 
     @trainer.on(Events.STARTED)
