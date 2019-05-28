@@ -113,15 +113,15 @@ def run(args):
 
     train_evaluator = Engine(_inference)
     cm = ConfusionMatrix(num_classes)
-    mIoU(cm, ignore_index=0).attach(train_evaluator, 'mIoU')
+    mIoU(cm).attach(train_evaluator, 'mIoU')
     Loss(criterion).attach(train_evaluator, 'loss')
 
     evaluator = Engine(_inference)
     cm2 = ConfusionMatrix(num_classes)
-    mIoU(cm2, ignore_index=0).attach(evaluator, 'mIoU')
+    mIoU(cm2).attach(evaluator, 'mIoU')
     Loss(criterion).attach(evaluator, 'loss')
 
-    def global_step_transform(engine, event_name):
+    def _global_step_transform(engine, event_name):
         return trainer.state.iteration
 
     tb_logger = TensorboardLogger(args.log_dir)
@@ -133,13 +133,13 @@ def run(args):
     tb_logger.attach(train_evaluator,
                      log_handler=OutputHandler(tag='training_eval',
                                                metric_names=['loss', 'mIoU'],
-                                               global_step_transform=global_step_transform),
+                                               global_step_transform=_global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation_eval',
                                                metric_names=['loss', 'mIoU'],
-                                               global_step_transform=global_step_transform),
+                                               global_step_transform=_global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
 
     @trainer.on(Events.STARTED)
