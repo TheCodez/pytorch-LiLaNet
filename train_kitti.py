@@ -95,9 +95,12 @@ def run(args):
     pbar = ProgressBar(persist=True)
     pbar.attach(trainer, metric_names=['loss'])
 
-    checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch, 'optimizer': optimizer.state_dict()}
     trainer.add_event_handler(event_name=Events.EPOCH_COMPLETED, handler=checkpoint_handler, to_save={
-        'checkpoint': checkpoint
+        'checkpoint': {
+            'model': model.state_dict(),
+            'epoch': trainer.state.epoch,
+            'optimizer': optimizer.state_dict()
+        }
     })
 
     timer.attach(trainer, start=Events.EPOCH_STARTED, resume=Events.ITERATION_STARTED,
