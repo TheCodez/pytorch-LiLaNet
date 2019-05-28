@@ -34,7 +34,7 @@ def get_data_loaders(data_dir, batch_size, num_workers):
 
 
 def run(args):
-    train_loader, val_loader = get_data_loaders(args.dir, args.batch_size, args.num_workers)
+    train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.num_workers)
 
     if args.seed is not None:
         torch.manual_seed(args.seed)
