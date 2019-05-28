@@ -17,7 +17,7 @@ from lilanet.datasets import KITTI, Normalize, Compose, RandomHorizontalFlip
 from lilanet.model import LiLaNet
 
 
-def get_data_loaders(data_dir, batch_size, num_workers):
+def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     normalize = Normalize(mean=KITTI.mean(), std=KITTI.std())
     transforms = Compose([
         RandomHorizontalFlip(),
@@ -28,13 +28,14 @@ def get_data_loaders(data_dir, batch_size, num_workers):
                               batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
     val_loader = DataLoader(KITTI(root=data_dir, split='val', transform=normalize),
-                            batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
+                            batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return train_loader, val_loader
 
 
 def run(args):
-    train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.num_workers)
+    train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
+                                                args.num_workers)
 
     if args.seed is not None:
         torch.manual_seed(args.seed)
@@ -166,7 +167,7 @@ def run(args):
         iou = metrics['mIoU']
 
         pbar.log_message('Training results - Epoch: [{}/{}]: Loss: {:.4f}, mIoU: {:.1f}'
-                         .format(loss, evaluator.state.epochs, evaluator.state.max_epochs, iou * 100.0))
+                         .format(loss, train_evaluator.state.epochs, train_evaluator.state.max_epochs, iou * 100.0))
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
@@ -199,8 +200,10 @@ def run(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser('LiLaNet with PyTorch')
-    parser.add_argument('--batch-size', type=int, default=5,
+    parser.add_argument('--batch-size', type=int, default=10,
                         help='input batch size for training')
+    parser.add_argument('--val-batch-size', type=int, default=16,
+                        help='input batch size for validation')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='number of workers')
     parser.add_argument('--epochs', type=int, default=200,
