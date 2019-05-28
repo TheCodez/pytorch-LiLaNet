@@ -49,8 +49,8 @@ class KITTI(data.Dataset):
         record = np.load(self.lidar[index]).astype(np.float32, copy=False)
         record = torch.as_tensor(record).permute(2, 0, 1).contiguous()
 
-        distance = record[3, :, :]
-        reflectivity = record[4, :, :]
+        distance = record[3, :, :].unsqueeze(0)
+        reflectivity = record[4, :, :].unsqueeze(0)
         label = record[5, :, :].long()
 
         if self.transform:
@@ -91,6 +91,21 @@ if __name__ == '__main__':
         return (x - x.min()) / (x.max() - x.min())
 
 
+    def visualize_seg(label_map, one_hot=False):
+        if one_hot:
+            label_map = np.argmax(label_map, axis=-1)
+
+        out = np.zeros((label_map.shape[0], label_map.shape[1], 3))
+
+        for l in range(1, KITTI.num_classes()):
+            mask = label_map == l
+            out[mask, 0] = np.array(KITTI.classes[l].color[1])
+            out[mask, 1] = np.array(KITTI.classes[l].color[0])
+            out[mask, 2] = np.array(KITTI.classes[l].color[2])
+
+        return out
+
+
     dataset = KITTI('../../data/kitti', transform=joint_transforms)
     distance, reflectivity, label = random.choice(dataset)
 
@@ -100,14 +115,22 @@ if __name__ == '__main__':
 
     distance_map = Image.fromarray((255 * _normalize(distance.numpy())).astype(np.uint8))
     reflectivity_map = Image.fromarray((255 * _normalize(reflectivity.numpy())).astype(np.uint8))
-    label_map = Image.fromarray((255 * _normalize(label.numpy())).astype(np.uint8))
+    label_map = Image.fromarray((255 * visualize_seg(label.numpy())).astype(np.uint8))
 
-    f = plt.figure()
-    a = f.add_subplot(1, 2, 1)
-    a.set_title('Distance')
+    blend_map = Image.blend(distance_map.convert('RGBA'), label_map.convert('RGBA'), alpha=0.4)
+
+    plt.figure(figsize=(10, 5))
+    plt.subplot(221)
+    plt.title("Distance")
     plt.imshow(distance_map)
-    a = f.add_subplot(1, 2, 2)
-    a.set_title('Reflectivity')
+    plt.subplot(222)
+    plt.title("Reflectivity")
     plt.imshow(reflectivity_map)
+    plt.subplot(223)
+    plt.title("Label")
+    plt.imshow(label_map)
+    plt.subplot(224)
+    plt.title("Result")
+    plt.imshow(blend_map)
 
     plt.show()
