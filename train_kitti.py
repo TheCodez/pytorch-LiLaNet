@@ -50,7 +50,7 @@ def run(args):
 
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights())
+    criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights()).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     if args.resume:
