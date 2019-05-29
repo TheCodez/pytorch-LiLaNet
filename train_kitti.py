@@ -126,12 +126,12 @@ def run(args):
 
     train_evaluator = Engine(_inference)
     cm = ConfusionMatrix(num_classes)
-    mIoU(cm).attach(train_evaluator, 'mIoU')
+    mIoU(cm, ignore_index=0).attach(train_evaluator, 'mIoU')
     Loss(criterion).attach(train_evaluator, 'loss')
 
     evaluator = Engine(_inference)
     cm2 = ConfusionMatrix(num_classes)
-    mIoU(cm2).attach(evaluator, 'mIoU')
+    mIoU(cm2, ignore_index=0).attach(evaluator, 'mIoU')
     Loss(criterion).attach(evaluator, 'loss')
 
     def _global_step_transform(engine, event_name):
