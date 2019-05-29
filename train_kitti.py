@@ -14,6 +14,7 @@ from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 
 from lilanet.datasets import KITTI, Normalize, Compose, RandomHorizontalFlip
+from lilanet.datasets.transforms import ToTensor
 from lilanet.model import LiLaNet
 
 
@@ -21,13 +22,19 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
     normalize = Normalize(mean=KITTI.mean(), std=KITTI.std())
     transforms = Compose([
         RandomHorizontalFlip(),
+        ToTensor(),
+        normalize
+    ])
+
+    val_transforms = Compose([
+        ToTensor(),
         normalize
     ])
 
     train_loader = DataLoader(KITTI(root=data_dir, split='train', transform=transforms),
                               batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
-    val_loader = DataLoader(KITTI(root=data_dir, split='val', transform=normalize),
+    val_loader = DataLoader(KITTI(root=data_dir, split='val', transform=val_transforms),
                             batch_size=val_batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     return train_loader, val_loader
@@ -136,11 +143,11 @@ def run(args):
                                                metric_names=['loss']),
                      event_name=Events.ITERATION_COMPLETED)
 
-    tb_logger.attach(train_evaluator,
-                     log_handler=OutputHandler(tag='training_eval',
-                                               metric_names=['loss', 'mIoU'],
-                                               global_step_transform=_global_step_transform),
-                     event_name=Events.EPOCH_COMPLETED)
+    #tb_logger.attach(train_evaluator,
+    #                 log_handler=OutputHandler(tag='training_eval',
+    #                                           metric_names=['loss', 'mIoU'],
+    #                                           global_step_transform=_global_step_transform),
+    #                 event_name=Events.EPOCH_COMPLETED)
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation_eval',
@@ -159,15 +166,15 @@ def run(args):
                                                                                 engine.state.max_epochs, timer.value()))
         timer.reset()
 
-    @trainer.on(Events.EPOCH_COMPLETED)
-    def log_training_results(engine):
-        train_evaluator.run(train_loader)
-        metrics = train_evaluator.state.metrics
-        loss = metrics['loss']
-        iou = metrics['mIoU']
-
-        pbar.log_message('Training results - Epoch: [{}/{}]: Loss: {:.4f}, mIoU: {:.1f}'
-                         .format(loss, train_evaluator.state.epoch, train_evaluator.state.max_epochs, iou * 100.0))
+    #@trainer.on(Events.EPOCH_COMPLETED)
+    #def log_training_results(engine):
+    #    train_evaluator.run(train_loader)
+    #    metrics = train_evaluator.state.metrics
+    #    loss = metrics['loss']
+    #    iou = metrics['mIoU']
+    #
+    #    pbar.log_message('Training results - Epoch: [{}/{}]: Loss: {:.4f}, mIoU: {:.1f}'
+    #                     .format(loss, train_evaluator.state.epoch, train_evaluator.state.max_epochs, iou * 100.0))
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):

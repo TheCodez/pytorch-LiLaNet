@@ -49,9 +49,9 @@ class KITTI(data.Dataset):
         record = np.load(self.lidar[index]).astype(np.float32, copy=False)
         record = torch.as_tensor(record).permute(2, 0, 1).contiguous()
 
-        distance = record[3, :, :].unsqueeze(0)
-        reflectivity = record[4, :, :].unsqueeze(0)
-        label = record[5, :, :].long()
+        distance = record[3, :, :]
+        reflectivity = record[4, :, :]
+        label = record[5, :, :]
 
         if self.transform:
             distance, reflectivity, label = self.transform(distance, reflectivity, label)

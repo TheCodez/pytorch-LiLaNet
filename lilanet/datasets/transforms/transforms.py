@@ -9,12 +9,23 @@ class Compose(object):
     Args:
         transforms (list of ``Transform`` objects): list of transforms to compose.
     """
+
     def __init__(self, transforms):
         self.transforms = transforms
 
     def __call__(self, distance, reflectivity, label):
         for t in self.transforms:
             distance, reflectivity, label = t(distance, reflectivity, label)
+        return distance, reflectivity, label
+
+
+class ToTensor(object):
+
+    def __call__(self, distance, reflectivity, label):
+        distance = distance.unsqueeze(0)
+        reflectivity = reflectivity.unsqueeze(0)
+        label = label.long()
+
         return distance, reflectivity, label
 
 
@@ -49,6 +60,7 @@ class RandomHorizontalFlip(object):
     Args:
         p (float): probability of the tensors being flipped. Default value is 0.5
     """
+
     def __init__(self, p=0.5):
         self.p = p
 
