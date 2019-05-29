@@ -91,7 +91,7 @@ def run(args):
         loss.backward()
         optimizer.step()
 
-        return loss.item()
+        return loss.item(), (pred, target)
 
     trainer = Engine(_update)
 
@@ -100,11 +100,13 @@ def run(args):
     timer = Timer(average=True)
 
     # attach running average metrics
-    RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
+    RunningAverage(output_transform=lambda x: x[0]).attach(trainer, 'loss')
+    cm = ConfusionMatrix(num_classes, output_transform=lambda x: x[1])
+    RunningAverage(mIoU(cm, ignore_index=0)).attach(trainer, 'mIoU')
 
     # attach progress bar
     pbar = ProgressBar(persist=True)
-    pbar.attach(trainer, metric_names=['loss'])
+    pbar.attach(trainer, metric_names=['loss', 'mIoU'])
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def save_checkpoint(engine):
@@ -122,11 +124,6 @@ def run(args):
 
             return pred, target
 
-    train_evaluator = Engine(_inference)
-    cm = ConfusionMatrix(num_classes)
-    mIoU(cm, ignore_index=0).attach(train_evaluator, 'mIoU')
-    Loss(criterion).attach(train_evaluator, 'loss')
-
     evaluator = Engine(_inference)
     cm2 = ConfusionMatrix(num_classes)
     mIoU(cm2, ignore_index=0).attach(evaluator, 'mIoU')
@@ -140,12 +137,6 @@ def run(args):
                      log_handler=OutputHandler(tag='training',
                                                metric_names=['loss']),
                      event_name=Events.ITERATION_COMPLETED)
-
-    # tb_logger.attach(train_evaluator,
-    #                 log_handler=OutputHandler(tag='training_eval',
-    #                                           metric_names=['loss', 'mIoU'],
-    #                                           global_step_transform=_global_step_transform),
-    #                 event_name=Events.EPOCH_COMPLETED)
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation_eval',
@@ -164,16 +155,6 @@ def run(args):
                                                                                 engine.state.max_epochs, timer.value()))
         timer.reset()
 
-    # @trainer.on(Events.EPOCH_COMPLETED)
-    # def log_training_results(engine):
-    #    train_evaluator.run(train_loader)
-    #    metrics = train_evaluator.state.metrics
-    #    loss = metrics['loss']
-    #    iou = metrics['mIoU']
-    #
-    #    pbar.log_message('Training results - Epoch: [{}/{}]: Loss: {:.4f}, mIoU: {:.1f}'
-    #                     .format(loss, engine.state.epoch, engine.state.max_epochs, iou * 100.0))
-
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
         pbar.log_message('Start Validation - Epoch: [{}/{}]'.format(engine.state.epoch, engine.state.max_epochs))
@@ -191,13 +172,16 @@ def run(args):
             engine.terminate()
             warnings.warn("KeyboardInterrupt caught. Exiting gracefully.")
 
-            checkpoint_handler(engine, {'model_exception': model})
+            checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
+                          'optimizer': optimizer.state_dict()}
+            checkpoint_handler(engine, {'checkpoint_exception': checkpoint})
         else:
             raise e
 
     @trainer.on(Events.COMPLETED)
     def save_final_model(engine):
         checkpoint_handler(engine, {'final': model})
+        checkpoint_handler(engine, {'final_state_dict': model.state_dict()})
 
     print("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)
