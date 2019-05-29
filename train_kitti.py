@@ -161,8 +161,8 @@ def run(args):
         loss = metrics['loss']
         iou = metrics['mIoU']
 
-        pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.4f}, mIoU: {:.1f}'
-                         .format(loss, engine.state.epoch, engine.state.max_epochs, iou * 100.0))
+        pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.2e}, mIoU: {:.1f}'
+                         .format(engine.state.epoch, engine.state.max_epochs, loss, iou * 100.0))
 
     @trainer.on(Events.EXCEPTION_RAISED)
     def handle_exception(engine, e):
