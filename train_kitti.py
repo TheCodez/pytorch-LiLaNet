@@ -102,7 +102,7 @@ def run(args):
     # attach running average metrics
     RunningAverage(output_transform=lambda x: x[0]).attach(trainer, 'loss')
     cm = ConfusionMatrix(num_classes, output_transform=lambda x: x[1])
-    RunningAverage(mIoU(cm, ignore_index=0)).attach(trainer, 'mIoU')
+    mIoU(cm, ignore_index=0).attach(trainer, 'mIoU')
 
     # attach progress bar
     pbar = ProgressBar(persist=True)
