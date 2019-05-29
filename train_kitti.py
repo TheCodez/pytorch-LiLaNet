@@ -52,9 +52,12 @@ def run(args):
     num_classes = KITTI.num_classes()
     model = LiLaNet(num_classes)
 
-    if torch.cuda.device_count() > 1:
-        print("Using %d GPU(s)" % torch.cuda.device_count())
+    device_count = torch.cuda.device_count()
+    if device_count > 1:
+        print("Using %d GPU(s)" % device_count)
         model = nn.DataParallel(model)
+        args.batch_size = device_count * args.batch_size
+        args.val_batch_size = device_count * args.val_batch_size
 
     model = model.to(device)
 
@@ -105,13 +108,8 @@ def run(args):
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def save_checkpoint(engine):
-        checkpoint_handler(engine, {
-            'checkpoint': {
-                'model': model.state_dict(),
-                'epoch': trainer.state.epoch,
-                'optimizer': optimizer.state_dict()
-            }
-        })
+        checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch, 'optimizer': optimizer.state_dict()}
+        checkpoint_handler(engine, {'checkpoint': checkpoint})
 
     timer.attach(trainer, start=Events.EPOCH_STARTED, resume=Events.ITERATION_STARTED,
                  pause=Events.ITERATION_COMPLETED, step=Events.ITERATION_COMPLETED)
@@ -143,7 +141,7 @@ def run(args):
                                                metric_names=['loss']),
                      event_name=Events.ITERATION_COMPLETED)
 
-    #tb_logger.attach(train_evaluator,
+    # tb_logger.attach(train_evaluator,
     #                 log_handler=OutputHandler(tag='training_eval',
     #                                           metric_names=['loss', 'mIoU'],
     #                                           global_step_transform=_global_step_transform),
@@ -166,25 +164,26 @@ def run(args):
                                                                                 engine.state.max_epochs, timer.value()))
         timer.reset()
 
-    #@trainer.on(Events.EPOCH_COMPLETED)
-    #def log_training_results(engine):
+    # @trainer.on(Events.EPOCH_COMPLETED)
+    # def log_training_results(engine):
     #    train_evaluator.run(train_loader)
     #    metrics = train_evaluator.state.metrics
     #    loss = metrics['loss']
     #    iou = metrics['mIoU']
     #
     #    pbar.log_message('Training results - Epoch: [{}/{}]: Loss: {:.4f}, mIoU: {:.1f}'
-    #                     .format(loss, train_evaluator.state.epoch, train_evaluator.state.max_epochs, iou * 100.0))
+    #                     .format(loss, engine.state.epoch, engine.state.max_epochs, iou * 100.0))
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
+        pbar.log_message('Start Validation - Epoch: [{}/{}]'.format(engine.state.epoch, engine.state.max_epochs))
         evaluator.run(val_loader)
         metrics = evaluator.state.metrics
         loss = metrics['loss']
         iou = metrics['mIoU']
 
         pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.4f}, mIoU: {:.1f}'
-                         .format(loss, evaluator.state.epoch, evaluator.state.max_epochs, iou * 100.0))
+                         .format(loss, engine.state.epoch, engine.state.max_epochs, iou * 100.0))
 
     @trainer.on(Events.EXCEPTION_RAISED)
     def handle_exception(engine, e):
@@ -209,7 +208,7 @@ if __name__ == '__main__':
     parser = ArgumentParser('LiLaNet with PyTorch')
     parser.add_argument('--batch-size', type=int, default=10,
                         help='input batch size for training')
-    parser.add_argument('--val-batch-size', type=int, default=16,
+    parser.add_argument('--val-batch-size', type=int, default=10,
                         help='input batch size for validation')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='number of workers')
