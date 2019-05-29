@@ -91,7 +91,7 @@ def run(args):
         loss.backward()
         optimizer.step()
 
-        return loss.item(), (pred, target)
+        return loss.item()
 
     trainer = Engine(_update)
 
@@ -100,13 +100,11 @@ def run(args):
     timer = Timer(average=True)
 
     # attach running average metrics
-    RunningAverage(output_transform=lambda x: x[0]).attach(trainer, 'loss')
-    cm = ConfusionMatrix(num_classes, output_transform=lambda x: x[1])
-    mIoU(cm, ignore_index=0).attach(trainer, 'mIoU')
+    RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
     # attach progress bar
     pbar = ProgressBar(persist=True)
-    pbar.attach(trainer, metric_names=['loss', 'mIoU'])
+    pbar.attach(trainer, metric_names=['loss'])
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def save_checkpoint(engine):
@@ -125,8 +123,8 @@ def run(args):
             return pred, target
 
     evaluator = Engine(_inference)
-    cm2 = ConfusionMatrix(num_classes)
-    mIoU(cm2, ignore_index=0).attach(evaluator, 'mIoU')
+    cm = ConfusionMatrix(num_classes)
+    mIoU(cm, ignore_index=0).attach(evaluator, 'mIoU')
     Loss(criterion).attach(evaluator, 'loss')
 
     def _global_step_transform(engine, event_name):
@@ -135,11 +133,11 @@ def run(args):
     tb_logger = TensorboardLogger(args.log_dir)
     tb_logger.attach(trainer,
                      log_handler=OutputHandler(tag='training',
-                                               metric_names=['loss', 'mIoU']),
+                                               metric_names=['loss']),
                      event_name=Events.ITERATION_COMPLETED)
 
     tb_logger.attach(evaluator,
-                     log_handler=OutputHandler(tag='validation_eval',
+                     log_handler=OutputHandler(tag='validation',
                                                metric_names=['loss', 'mIoU'],
                                                global_step_transform=_global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
