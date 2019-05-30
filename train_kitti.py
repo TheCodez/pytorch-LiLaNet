@@ -61,7 +61,7 @@ def run(args):
 
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights()).to(device)
+    criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights(), reduction='sum').to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     if args.resume:
@@ -141,6 +141,7 @@ def run(args):
 
     @trainer.on(Events.STARTED)
     def initialize(engine):
+        engine.state.exception_raised = False
         if args.resume:
             engine.state.epoch = args.start_epoch
 
@@ -158,6 +159,7 @@ def run(args):
 
     @trainer.on(Events.EXCEPTION_RAISED)
     def handle_exception(engine, e):
+        engine.state.exception_raised = True
         if isinstance(e, KeyboardInterrupt) and (engine.state.iteration > 1):
             engine.terminate()
             warnings.warn("KeyboardInterrupt caught. Exiting gracefully.")
@@ -170,7 +172,8 @@ def run(args):
 
     @trainer.on(Events.COMPLETED)
     def save_final_model(engine):
-        checkpoint_handler(engine, {'final': model, 'final_state_dict': model.state_dict()})
+        if not engine.state.exception_raised:
+            checkpoint_handler(engine, {'final': model, 'final_state_dict': model.state_dict()})
 
     print("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)
