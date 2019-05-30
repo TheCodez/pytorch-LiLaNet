@@ -61,7 +61,7 @@ def run(args):
 
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights(), reduction='sum').to(device)
+    criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights()).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     if args.resume:
@@ -124,6 +124,9 @@ def run(args):
     IoU(cm, ignore_index=0).attach(evaluator, 'IoU')
     Loss(criterion).attach(evaluator, 'loss')
 
+    pbar2 = ProgressBar(persist=True, desc='Eval Epoch')
+    pbar2.attach(evaluator)
+
     def _global_step_transform(engine, event_name):
         return trainer.state.iteration
 
@@ -151,11 +154,12 @@ def run(args):
         evaluator.run(val_loader)
         metrics = evaluator.state.metrics
         loss = metrics['loss']
-        iou = metrics['IoU']
+        iou = metrics['IoU'] * 100.0
         mean_iou = iou.mean()
 
-        pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.2e}, mIoU: {:.1f}'
-                         .format(engine.state.epoch, engine.state.max_epochs, loss, mean_iou * 100.0))
+        iou_text = ', '.join(['{}: {:.1f}'.format(KITTI.classes[i + 1].name, v) for i, v in enumerate(iou.tolist())])
+        pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.2e}\n IoU: {}\n mIoU: {:.1f}'
+                         .format(engine.state.epoch, engine.state.max_epochs, loss, iou_text, mean_iou))
 
     @trainer.on(Events.EXCEPTION_RAISED)
     def handle_exception(engine, e):
