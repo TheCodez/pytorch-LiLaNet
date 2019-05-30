@@ -8,8 +8,8 @@ import torch.optim as optim
 from ignite.contrib.handlers import ProgressBar
 from ignite.contrib.handlers.tensorboard_logger import *
 from ignite.engine import Events, Engine
-from ignite.handlers import ModelCheckpoint, Timer
-from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, mIoU
+from ignite.handlers import ModelCheckpoint
+from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
 from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
 
@@ -97,8 +97,6 @@ def run(args):
 
     checkpoint_handler = ModelCheckpoint(args.output_dir, 'checkpoint', save_interval=1, n_saved=10,
                                          require_empty=False, create_dir=True, save_as_state_dict=False)
-    timer = Timer(average=True)
-
     # attach running average metrics
     RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
@@ -108,11 +106,10 @@ def run(args):
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def save_checkpoint(engine):
-        checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch, 'optimizer': optimizer.state_dict()}
-        checkpoint_handler(engine, {'checkpoint': checkpoint})
-
-    timer.attach(trainer, start=Events.EPOCH_STARTED, resume=Events.ITERATION_STARTED,
-                 pause=Events.ITERATION_COMPLETED, step=Events.ITERATION_COMPLETED)
+        checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
+                      'optimizer': optimizer.state_dict()}
+        key = 'epoch{}'.format(engine.state.epoch)
+        checkpoint_handler(engine, {key: checkpoint})
 
     def _inference(engine, batch):
         model.eval()
@@ -124,7 +121,7 @@ def run(args):
 
     evaluator = Engine(_inference)
     cm = ConfusionMatrix(num_classes)
-    mIoU(cm, ignore_index=0).attach(evaluator, 'mIoU')
+    IoU(cm, ignore_index=0).attach(evaluator, 'IoU')
     Loss(criterion).attach(evaluator, 'loss')
 
     def _global_step_transform(engine, event_name):
@@ -138,7 +135,7 @@ def run(args):
 
     tb_logger.attach(evaluator,
                      log_handler=OutputHandler(tag='validation',
-                                               metric_names=['loss', 'mIoU'],
+                                               metric_names=['loss', 'IoU'],
                                                global_step_transform=_global_step_transform),
                      event_name=Events.EPOCH_COMPLETED)
 
@@ -148,21 +145,16 @@ def run(args):
             engine.state.epoch = args.start_epoch
 
     @trainer.on(Events.EPOCH_COMPLETED)
-    def print_times(engine):
-        pbar.log_message("Epoch [{}/{}] done. Time per batch: {:.3f}[s]".format(engine.state.epoch,
-                                                                                engine.state.max_epochs, timer.value()))
-        timer.reset()
-
-    @trainer.on(Events.EPOCH_COMPLETED)
-    def log_validation_results(engine):
+    def run_validation(engine):
         pbar.log_message('Start Validation - Epoch: [{}/{}]'.format(engine.state.epoch, engine.state.max_epochs))
         evaluator.run(val_loader)
         metrics = evaluator.state.metrics
         loss = metrics['loss']
-        iou = metrics['mIoU']
+        iou = metrics['IoU']
+        mean_iou = iou.mean()
 
         pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.2e}, mIoU: {:.1f}'
-                         .format(engine.state.epoch, engine.state.max_epochs, loss, iou * 100.0))
+                         .format(engine.state.epoch, engine.state.max_epochs, loss, mean_iou * 100.0))
 
     @trainer.on(Events.EXCEPTION_RAISED)
     def handle_exception(engine, e):
@@ -178,8 +170,7 @@ def run(args):
 
     @trainer.on(Events.COMPLETED)
     def save_final_model(engine):
-        checkpoint_handler(engine, {'final': model})
-        checkpoint_handler(engine, {'final_state_dict': model.state_dict()})
+        checkpoint_handler(engine, {'final': model, 'final_state_dict': model.state_dict()})
 
     print("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)
