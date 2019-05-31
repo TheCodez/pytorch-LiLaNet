@@ -104,13 +104,6 @@ def run(args):
     pbar = ProgressBar(persist=True)
     pbar.attach(trainer, metric_names=['loss'])
 
-    @trainer.on(Events.EPOCH_COMPLETED)
-    def save_checkpoint(engine):
-        checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
-                      'optimizer': optimizer.state_dict()}
-        key = 'epoch{}'.format(engine.state.epoch)
-        checkpoint_handler(engine, {key: checkpoint})
-
     def _inference(engine, batch):
         model.eval()
         with torch.no_grad():
@@ -147,6 +140,24 @@ def run(args):
         engine.state.exception_raised = False
         if args.resume:
             engine.state.epoch = args.start_epoch
+
+    @evaluator.on(Events.EPOCH_COMPLETED)
+    def save_checkpoint(engine):
+        metrics = engine.state.metrics
+        iou = metrics['IoU'] * 100.0
+        mean_iou = iou.mean()
+
+        checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
+                      'optimizer': optimizer.state_dict()}
+        key = 'epoch{}_mIoU={:.1f}'.format(engine.state.epoch, mean_iou)
+        name = 'checkpoint_epoch{}_mIoU={:.1f}.pth'.format(engine.state.epoch, mean_iou)
+        path = os.path.join(args.output_dir, name)
+        try:
+            torch.save(checkpoint, path)
+            from google.colab import files
+            files.download(path)
+        except ImportError:
+            checkpoint_handler(engine, {key: checkpoint})
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def run_validation(engine):
@@ -198,7 +209,7 @@ if __name__ == '__main__':
                         help='learning rate')
     parser.add_argument('--seed', type=int, default=123,
                         help='manual seed')
-    parser.add_argument('--output-dir', default='./checkpoints',
+    parser.add_argument('--output-dir', default='checkpoints',
                         help='directory to save model checkpoints')
     parser.add_argument('--resume', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
@@ -206,9 +217,9 @@ if __name__ == '__main__':
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('--log-interval', type=int, default=10,
                         help='how many batches to wait before logging training status')
-    parser.add_argument("--log-dir", type=str, default="tensorboard_logs",
+    parser.add_argument("--log-dir", type=str, default="logs",
                         help="log directory for Tensorboard log output")
-    parser.add_argument("--dataset-dir", type=str, default="../data/kitti",
+    parser.add_argument("--dataset-dir", type=str, default="data/kitti",
                         help="location of the dataset")
 
     run(parser.parse_args())
