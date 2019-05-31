@@ -24,9 +24,9 @@ class KITTI(data.Dataset):
 
     classes = [
         Class('unknown', 0, (0, 0, 0)),
-        Class('car', 1, (31, 143, 94)),
-        Class('pedestrian', 2, (168, 140, 181)),
-        Class('cyclist', 3, (148, 184, 224)),
+        Class('car', 1, (0, 0, 142)),
+        Class('pedestrian', 2, (220, 20, 60)),
+        Class('cyclist', 3, (119, 11, 32)),
     ]
 
     def __init__(self, root, split='train', transform=None):
@@ -76,6 +76,15 @@ class KITTI(data.Dataset):
     @staticmethod
     def class_weights():
         return torch.tensor([1 / 15.0, 1.0, 10.0, 10.0])
+
+    @staticmethod
+    def get_colormap():
+        cmap = torch.zeros([256, 3], dtype=torch.uint8)
+
+        for cls in KITTI.classes:
+            cmap[cls.id, :] = torch.tensor(cls.color, dtype=torch.uint8)
+
+        return cmap
 
 
 if __name__ == '__main__':
