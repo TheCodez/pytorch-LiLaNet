@@ -144,11 +144,12 @@ def run(args):
 
     @evaluator.on(Events.EPOCH_COMPLETED)
     def save_checkpoint(engine):
+        epoch = trainer.state.epoch if trainer.state is not None else 1
         iou = engine.state.metrics['IoU'] * 100.0
         mean_iou = iou.mean()
 
-        name = 'epoch{}_mIoU={:.1f}.pth'.format(trainer.state.epoch, mean_iou)
-        file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
+        name = 'epoch{}_mIoU={:.1f}.pth'.format(epoch, mean_iou)
+        file = {'model': model.state_dict(), 'epoch': epoch,
                 'optimizer': optimizer.state_dict(), 'args': args}
 
         save(file, args.output_dir, 'checkpoint_{}'.format(name))
