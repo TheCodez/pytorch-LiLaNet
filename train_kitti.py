@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 from lilanet.datasets import KITTI, Normalize, Compose, RandomHorizontalFlip
 from lilanet.datasets.transforms import ToTensor
 from lilanet.model import LiLaNet
+from lilanet.utils import save
 
 
 def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
@@ -147,8 +148,8 @@ def run(args):
         file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
                 'optimizer': optimizer.state_dict(), 'args': args}
 
-        torch.save(file, os.path.join(args.output_dir, 'checkpoint_{}'.format(name)))
-        torch.save(model.state_dict(), os.path.join(args.output_dir, 'model_{}'.format(name)))
+        save(file, args.output_dir, 'checkpoint_{}'.format(name))
+        save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def run_validation(engine):
@@ -174,12 +175,16 @@ def run(args):
             file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
                     'optimizer': optimizer.state_dict()}
 
-            torch.save(file, os.path.join(args.output_dir, 'checkpoint_{}'.format(name)))
-            torch.save(model.state_dict(), os.path.join(args.output_dir, 'model_{}'.format(name)))
+            save(file, args.output_dir, 'checkpoint_{}'.format(name))
+            save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
         else:
             raise e
 
     print("Start training")
+
+    if args.eval_on_start:
+        evaluator.run(val_loader, max_epochs=1)
+
     trainer.run(train_loader, max_epochs=args.epochs)
     tb_logger.close()
 
@@ -210,5 +215,7 @@ if __name__ == '__main__':
                         help="log directory for Tensorboard log output")
     parser.add_argument("--dataset-dir", type=str, default="data/kitti",
                         help="location of the dataset")
+    parser.add_argument("--eval-on-start", type=bool, default=False,
+                        help="evaluate before training")
 
     run(parser.parse_args())
