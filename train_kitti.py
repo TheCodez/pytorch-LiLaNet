@@ -8,7 +8,6 @@ import torch.optim as optim
 from ignite.contrib.handlers import ProgressBar
 from ignite.contrib.handlers.tensorboard_logger import *
 from ignite.engine import Events, Engine
-from ignite.handlers import ModelCheckpoint
 from ignite.metrics import RunningAverage, Loss, ConfusionMatrix, IoU
 from ignite.utils import convert_tensor
 from torch.utils.data import DataLoader
@@ -95,8 +94,6 @@ def run(args):
 
     trainer = Engine(_update)
 
-    checkpoint_handler = ModelCheckpoint(args.output_dir, 'checkpoint', save_interval=1, n_saved=10,
-                                         require_empty=False, create_dir=True, save_as_state_dict=False)
     # attach running average metrics
     RunningAverage(output_transform=lambda x: x).attach(trainer, 'loss')
 
@@ -143,25 +140,19 @@ def run(args):
 
     @evaluator.on(Events.EPOCH_COMPLETED)
     def save_checkpoint(engine):
-        metrics = engine.state.metrics
-        iou = metrics['IoU'] * 100.0
+        iou = engine.state.metrics['IoU'] * 100.0
         mean_iou = iou.mean()
 
-        checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
-                      'optimizer': optimizer.state_dict()}
-        key = 'epoch{}_mIoU={:.1f}'.format(engine.state.epoch, mean_iou)
-        name = 'checkpoint_epoch{}_mIoU={:.1f}.pth'.format(engine.state.epoch, mean_iou)
-        path = os.path.join(args.output_dir, name)
-        try:
-            torch.save(checkpoint, path)
-            from google.colab import files
-            files.download(path)
-        except ImportError:
-            checkpoint_handler(engine, {key: checkpoint})
+        name = 'epoch{}_mIoU={:.1f}.pth'.format(trainer.state.epoch, mean_iou)
+        file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
+                'optimizer': optimizer.state_dict(), 'args': args}
+
+        torch.save(file, os.path.join(args.output_dir, 'checkpoint_{}'.format(name)))
+        torch.save(model.state_dict(), os.path.join(args.output_dir, 'model_{}'.format(name)))
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def run_validation(engine):
-        pbar.log_message('Start Validation - Epoch: [{}/{}]'.format(engine.state.epoch, engine.state.max_epochs))
+        pbar.log_message("Start Validation - Epoch: [{}/{}]".format(engine.state.epoch, engine.state.max_epochs))
         evaluator.run(val_loader)
         metrics = evaluator.state.metrics
         loss = metrics['loss']
@@ -169,7 +160,7 @@ def run(args):
         mean_iou = iou.mean()
 
         iou_text = ', '.join(['{}: {:.1f}'.format(KITTI.classes[i + 1].name, v) for i, v in enumerate(iou.tolist())])
-        pbar.log_message('Validation results - Epoch: [{}/{}]: Loss: {:.2e}\n IoU: {}\n mIoU: {:.1f}'
+        pbar.log_message("Validation results - Epoch: [{}/{}]: Loss: {:.2e}\n IoU: {}\n mIoU: {:.1f}"
                          .format(engine.state.epoch, engine.state.max_epochs, loss, iou_text, mean_iou))
 
     @trainer.on(Events.EXCEPTION_RAISED)
@@ -179,16 +170,14 @@ def run(args):
             engine.terminate()
             warnings.warn("KeyboardInterrupt caught. Exiting gracefully.")
 
-            checkpoint = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
-                          'optimizer': optimizer.state_dict()}
-            checkpoint_handler(engine, {'checkpoint_exception': checkpoint})
+            name = 'epoch{}_exception.pth'.format(trainer.state.epoch)
+            file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
+                    'optimizer': optimizer.state_dict()}
+
+            torch.save(file, os.path.join(args.output_dir, 'checkpoint_{}'.format(name)))
+            torch.save(model.state_dict(), os.path.join(args.output_dir, 'model_{}'.format(name)))
         else:
             raise e
-
-    @trainer.on(Events.COMPLETED)
-    def save_final_model(engine):
-        if not engine.state.exception_raised:
-            checkpoint_handler(engine, {'final': model, 'final_state_dict': model.state_dict()})
 
     print("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)

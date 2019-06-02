@@ -1,19 +1,23 @@
 import torch
+import torch.hub as hub
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils import model_zoo
+
+model_urls = {
+    'kitti': 'https://github.com/TheCodez/pytorch-LiLaNet/releases/download/0.1/lilanet-854868ad.pth',
+}
 
 
-def lilanet(pretrained=False, num_classes=13):
+def lilanet(pretrained=None, num_classes=13):
     """Constructs a LiLaNet model.
 
     Args:
-        pretrained (bool): If True, returns a pre-trained model
+        pretrained (string): If not ``None``, returns a pre-trained model. Possible values: ``kitti``.
         num_classes (int): number of output classes
     """
     model = LiLaNet(num_classes)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(''))
+    if pretrained is not None:
+        model.load_state_dict(hub.load_state_dict_from_url(model_urls[pretrained]))
     return model
 
 
@@ -94,12 +98,12 @@ class BasicConv2d(nn.Module):
 
 
 if __name__ == '__main__':
-    num_classes, height, width = 13, 64, 512
+    num_classes, height, width = 4, 64, 512
 
-    model = LiLaNet(num_classes).to('cuda')
-    inp = torch.randn(1, 1, height, width).to('cuda')
+    model = LiLaNet(num_classes)  # .to('cuda')
+    inp = torch.randn(5, 1, height, width)  # .to('cuda')
 
     out = model(inp, inp)
-    assert out.size() == torch.Size([1, num_classes, height, width])
+    assert out.size() == torch.Size([5, num_classes, height, width])
 
     print('Pass size check.')
