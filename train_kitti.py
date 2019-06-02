@@ -119,7 +119,10 @@ def run(args):
     pbar2.attach(evaluator)
 
     def _global_step_transform(engine, event_name):
-        return trainer.state.iteration
+        if trainer.state is not None:
+            return trainer.state.iteration
+        else:
+            return 1
 
     tb_logger = TensorboardLogger(args.log_dir)
     tb_logger.attach(trainer,
@@ -180,11 +183,11 @@ def run(args):
         else:
             raise e
 
-    print("Start training")
-
     if args.eval_on_start:
+        print("Start validation")
         evaluator.run(val_loader, max_epochs=1)
 
+    print("Start training")
     trainer.run(train_loader, max_epochs=args.epochs)
     tb_logger.close()
 
