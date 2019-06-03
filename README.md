@@ -1,13 +1,19 @@
-# [WIP] pytorch-LiLa ![alt text](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)
+# pytorch-LiLa ![alt text](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)
 
 Inofficial PyTorch implementation of [Boosting LiDAR-based Semantic Labeling by Cross-Modal Training Data Generation](https://arxiv.org/abs/1804.09915) (Piewak et al., 2018).
-
-A trained model will be provided at some point.
 
 ## Differences:
 
 The Autolabeling process is currently not used, instead the converted KITTI data from [SqueezeSeg](https://github.com/BichenWuUCB/SqueezeSeg) is used.
 For better convergence we add batch normalization after each convolutional layer.
+
+## Results:
+
+|            | Car      | Pedestrian | Cyclist  | mIoU     |
+|:----------:|----------|------------|----------|----------|
+| SqueezeSeg | **64.6** | 21.8       | 25.1     | 37.2     |
+| LiLaNet    | 56.7     | **38.6**   | **26.1** | **40.5** |
+|            |          |            |          |          |
 
 ## Requirements
 
