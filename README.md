@@ -13,7 +13,6 @@ For better convergence we add batch normalization after each convolutional layer
 |:----------:|----------|------------|----------|----------|
 | SqueezeSeg | **64.6** | 21.8       | 25.1     | 37.2     |
 | LiLaNet    | 56.7     | **38.6**   | **26.1** | **40.5** |
-|            |          |            |          |          |
 
 ## Requirements
 
@@ -28,5 +27,5 @@ Train model:
 **Important**: The ```dataset-dir``` must contain the ```lidar_2d``` and the ```ImageSet``` folder.
 
 ```bash
-python lilanet/train_kitti.py --dataset-dir '../data/kitti'
+python train_kitti.py --dataset-dir 'data/kitti'
 ```
