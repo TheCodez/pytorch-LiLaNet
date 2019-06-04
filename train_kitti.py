@@ -41,9 +41,6 @@ def get_data_loaders(data_dir, batch_size, val_batch_size, num_workers):
 
 
 def run(args):
-    train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
-                                                args.num_workers)
-
     if args.seed is not None:
         torch.manual_seed(args.seed)
 
@@ -60,6 +57,9 @@ def run(args):
         args.val_batch_size = device_count * args.val_batch_size
 
     model = model.to(device)
+
+    train_loader, val_loader = get_data_loaders(args.dataset_dir, args.batch_size, args.val_batch_size,
+                                                args.num_workers)
 
     criterion = nn.CrossEntropyLoss(weight=KITTI.class_weights()).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -84,12 +84,15 @@ def run(args):
 
     def _update(engine, batch):
         model.train()
-        optimizer.zero_grad()
+
+        if engine.state.iteration % args.grad_accum == 0:
+            optimizer.zero_grad()
         distance, reflectivity, target = _prepare_batch(batch)
         pred = model(distance, reflectivity)
-        loss = criterion(pred, target)
+        loss = criterion(pred, target) / args.grad_accum
         loss.backward()
-        optimizer.step()
+        if engine.state.iteration % args.grad_accum == 0:
+            optimizer.step()
 
         return loss.item()
 
@@ -138,7 +141,6 @@ def run(args):
 
     @trainer.on(Events.STARTED)
     def initialize(engine):
-        engine.state.exception_raised = False
         if args.resume:
             engine.state.epoch = args.start_epoch
 
@@ -149,8 +151,8 @@ def run(args):
         mean_iou = iou.mean()
 
         name = 'epoch{}_mIoU={:.1f}.pth'.format(epoch, mean_iou)
-        file = {'model': model.state_dict(), 'epoch': epoch,
-                'optimizer': optimizer.state_dict(), 'args': args}
+        file = {'model': model.state_dict(), 'epoch': epoch, 'optimizer': optimizer.state_dict(),
+                'args': args}
 
         save(file, args.output_dir, 'checkpoint_{}'.format(name))
         save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
@@ -170,14 +172,13 @@ def run(args):
 
     @trainer.on(Events.EXCEPTION_RAISED)
     def handle_exception(engine, e):
-        engine.state.exception_raised = True
         if isinstance(e, KeyboardInterrupt) and (engine.state.iteration > 1):
             engine.terminate()
             warnings.warn("KeyboardInterrupt caught. Exiting gracefully.")
 
             name = 'epoch{}_exception.pth'.format(trainer.state.epoch)
-            file = {'model': model.state_dict(), 'epoch': trainer.state.epoch,
-                    'optimizer': optimizer.state_dict()}
+            file = {'model': model.state_dict(), 'epoch': trainer.state.epoch, 'optimizer': optimizer.state_dict(),
+                    'args': args}
 
             save(file, args.output_dir, 'checkpoint_{}'.format(name))
             save(model.state_dict(), args.output_dir, 'model_{}'.format(name))
@@ -221,5 +222,7 @@ if __name__ == '__main__':
                         help="location of the dataset")
     parser.add_argument("--eval-on-start", type=bool, default=False,
                         help="evaluate before training")
+    parser.add_argument('--grad-accum', type=int, default=1,
+                        help='grad accumulation')
 
     run(parser.parse_args())
