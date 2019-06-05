@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 model_urls = {
-    'kitti': 'https://github.com/TheCodez/pytorch-LiLaNet/releases/download/0.1/lilanet_40.5-84f79d2c.pth'
+    'kitti': 'https://github.com/TheCodez/pytorch-LiLaNet/releases/download/0.1/lilanet_45.1-7e43ccce.pth'
 }
 
 

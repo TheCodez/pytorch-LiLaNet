@@ -9,10 +9,11 @@ For better convergence we add batch normalization after each convolutional layer
 
 ## Results:
 
-|            | Car      | Pedestrian | Cyclist  | mIoU     |
-|:----------:|----------|------------|----------|----------|
-| SqueezeSeg | **64.6** | 21.8       | 25.1     | 37.2     |
-| LiLaNet    | 56.7     | **38.6**   | **26.1** | **40.5** |
+|              | Car      | Pedestrian | Cyclist  | mIoU     |
+|:------------:|----------|------------|----------|----------|
+| SqueezeSeg   |   64.6   |    21.8    |   25.1   |   37.2   |
+| SqueezeSegV2 | **73.2** |    27.8    | **33.6** |   44.9   |
+| LiLaNet      |   65.3   |  **37.7**  |   32.2   | **45.1** |
 
 ## Requirements
 
