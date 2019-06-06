@@ -3,8 +3,11 @@ import torch.hub as hub
 import torch.nn as nn
 import torch.nn.functional as F
 
-model_urls = {
-    'kitti': 'https://github.com/TheCodez/pytorch-LiLaNet/releases/download/0.1/lilanet_45.1-7e43ccce.pth'
+pretrained_models = {
+    'kitti': {
+        'url': 'https://github.com/TheCodez/pytorch-LiLaNet/releases/download/0.1/lilanet_45.5-5e181223.pth',
+        'num_classes': 4
+    }
 }
 
 
@@ -13,11 +16,15 @@ def lilanet(pretrained=None, num_classes=13):
 
     Args:
         pretrained (string): If not ``None``, returns a pre-trained model. Possible values: ``kitti``.
-        num_classes (int): number of output classes
+        num_classes (int): number of output classes. Automatically set to the correct number of classes
+            if ``pretrained`` is specified.
     """
-    model = LiLaNet(num_classes)
     if pretrained is not None:
-        model.load_state_dict(hub.load_state_dict_from_url(model_urls[pretrained]))
+        model = LiLaNet(pretrained_models[pretrained]['num_classes'])
+        model.load_state_dict(hub.load_state_dict_from_url(pretrained_models[pretrained]['url']))
+        return model
+
+    model = LiLaNet(num_classes)
     return model
 
 
