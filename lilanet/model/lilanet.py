@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 pretrained_models = {
     'kitti': {
-        'url': 'https://github.com/TheCodez/pytorch-LiLaNet/releases/download/0.1/lilanet_45.5-5e181223.pth',
+        'url': 'https://github.com/TheCodez/pytorch-LiLaNet/releases/download/0.1/lilanet_45.5-75c06618.pth',
         'num_classes': 4
     }
 }

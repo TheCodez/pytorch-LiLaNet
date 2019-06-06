@@ -13,7 +13,7 @@ For better convergence we add batch normalization after each convolutional layer
 |:------------:|----------|------------|----------|----------|
 | SqueezeSeg   |   64.6   |    21.8    |   25.1   |   37.2   |
 | SqueezeSegV2 | **73.2** |    27.8    | **33.6** |   44.9   |
-| LiLaNet      |   65.3   |  **37.7**  |   32.2   | **45.1** |
+| LiLaNet      |   67.6   |  **36.9**  |   31.9   | **45.5** |
 
 ## Requirements
 
