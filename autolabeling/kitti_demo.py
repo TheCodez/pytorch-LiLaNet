@@ -123,7 +123,7 @@ if __name__ == '__main__':
     file_name = "{}_{}_{}.png".format(date, drive, os.path.basename(dataset.cam2_files[idx])[:-4])
 
     model = hub.load('TheCodez/pytorch-GoogLeNet-FCN', 'googlenet_fcn', pretrained='cityscapes')
-    model = model.to('cuda')
+    model = model.to(device)
     model.eval()
 
     img = dataset.get_cam2(idx)
@@ -132,15 +132,15 @@ if __name__ == '__main__':
     print("Inference")
     pred = autolabel.semantic_segmentation(model, img, device)
 
-    pc = autolabel.get_points_in_fov_90(pc_velo)
+    pc_velo = autolabel.get_points_in_fov_90(pc_velo)
 
     print("Transferring labels")
-    pc_l = autolabel.transfer_label(pc, pred, dataset.calib.T_cam0_velo, dataset.calib.K_cam0)
+    pc_labels = autolabel.transfer_labels(pc_velo, pred, dataset.calib.T_cam0_velo, dataset.calib.K_cam0)
 
     print("Spherical projection")
-    lidar = autolabel.spherical_projection(pc_l)
+    lidar = autolabel.spherical_projection(pc_labels)
 
-    proj_img = show_lidar_on_image(pc, np.array(img), pred, dataset.calib.T_cam0_velo, dataset.calib.K_cam0)
+    proj_img = show_lidar_on_image(pc_velo, np.array(img), pred, dataset.calib.T_cam0_velo, dataset.calib.K_cam0)
 
     record = torch.as_tensor(lidar, dtype=torch.float32).permute(2, 0, 1).contiguous()
     distance = record[3, :, :]

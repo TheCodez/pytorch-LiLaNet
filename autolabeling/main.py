@@ -29,9 +29,9 @@ def run(args):
 
                 print("Processing: ", file_name)
                 pred = autolabel.semantic_segmentation(model, image, device)
-                pc = autolabel.get_points_in_fov_90(pc_velo)
-                pc_l = autolabel.transfer_label(pc, pred, data.calib.T_cam0_velo, data.calib.K_cam0)
-                record = autolabel.spherical_projection(pc_l)
+                pc_velo = autolabel.get_points_in_fov_90(pc_velo)
+                pc_labels = autolabel.transfer_labels(pc_velo, pred, data.calib.T_cam0_velo, data.calib.K_cam0)
+                record = autolabel.spherical_projection(pc_labels)
 
                 os.makedirs(args.output_dir, exist_ok=True)
                 np.save(os.path.join(args.output_dir, file_name), record)

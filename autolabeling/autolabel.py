@@ -34,7 +34,7 @@ def pinhole_projection(points, img, T_cam0, K_cam0):
     return points_2d
 
 
-def transfer_label(points, semantic, T_cam0, K_cam0):
+def transfer_labels(points, semantic, T_cam0, K_cam0):
     labels = np.ones((points.shape[0], 1), dtype=points.dtype) * 255
 
     points_2d = pinhole_projection(points, semantic, T_cam0, K_cam0)
@@ -66,7 +66,7 @@ def spherical_projection(points, height=64, width=512):
     idx_h = np.floor(idx_h).astype(np.int32)
     idx_w = np.floor(idx_w).astype(np.int32)
 
-    projected_img = np.zeros((height, width, 6))
+    projected_img = np.zeros((height, width, 6), dtype=np.float32)
     projected_img[idx_h, idx_w, 0] = x
     projected_img[idx_h, idx_w, 1] = y
     projected_img[idx_h, idx_w, 2] = z
