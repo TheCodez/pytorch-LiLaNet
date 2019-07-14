@@ -33,23 +33,27 @@ def convert_train_id_to_id(target):
 
 
 def show_lidar_on_image(points, image, segmentation, T_cam0, K_cam0):
-    points_2d = autolabel.pinhole_projection(points, segmentation, T_cam0, K_cam0)
+    points_2d = autolabel.pinhole_projection(points, T_cam0, K_cam0)
 
     cmap = get_cityscapes_colormap()
     segmentation = convert_train_id_to_id(segmentation)
     vis = colorize_seg(segmentation.cpu(), cmap)
+    height, width = segmentation.shape
 
     for i in range(points.shape[0]):
         img_x = points_2d[i, 0]
         img_y = points_2d[i, 1]
+        img_x = np.clip(img_x, 0, width - 1)
+        img_y = np.clip(img_y, 0, height - 1)
+
         color = vis[:, img_y, img_x].tolist()
         cv2.circle(image, (img_x, img_y), 2, color=tuple(color), thickness=-1)
 
     return image
 
 
-def show_lidar_depth_on_image(pc_velo, img, segmentation, T_cam0, K_cam0):
-    points_2d = autolabel.pinhole_projection(pc_velo, segmentation, T_cam0, K_cam0)
+def show_lidar_depth_on_image(pc_velo, img, T_cam0, K_cam0):
+    points_2d = autolabel.pinhole_projection(pc_velo, T_cam0, K_cam0)
 
     cmap = plt.cm.get_cmap('hsv', 256)
     cmap = np.array([cmap(i) for i in range(256)])[:, :3] * 255
@@ -143,8 +147,8 @@ if __name__ == '__main__':
     proj_img = show_lidar_on_image(pc_velo, np.array(img), pred, dataset.calib.T_cam0_velo, dataset.calib.K_cam0)
 
     record = torch.as_tensor(lidar, dtype=torch.float32).permute(2, 0, 1).contiguous()
-    distance = record[3, :, :]
-    reflectivity = record[4, :, :]
+    reflectivity = record[3, :, :]
+    distance = record[4, :, :]
     label = record[5, :, :]
 
     plot_images(file_name, distance, reflectivity, label, pred, img, proj_img)
